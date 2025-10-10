@@ -6,4 +6,5 @@ import (
 
 func Test() error {
 	fmt.Println("Forge test executed Successfully")
+	return nil
 } 
