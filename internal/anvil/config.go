@@ -15,5 +15,5 @@ type AnvilConfig struct {
 }
 
 func Initializer() {
-	anvilConfig AnvilConfig = new AnvilConfig()
+	var anvilConfig AnvilConfig
 }
