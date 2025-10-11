@@ -1,44 +1,45 @@
 package anvil
 
 import (
-	"os"
+	"net/url"
+	"regexp"
+	"strconv"
+	"strings"
 )
-func CheckRpcURL (){
-	if os.Args[1]==isRpcURL() {
-		anvilConfig.RpcURL= os.Args[1]
-	} else{
-		anvilConfig.RpcURL=constants.RpcURL
+
+func isRpcURL(s string) bool {
+	u, err := url.ParseRequestURI(s)
+	if err != nil {
+		return false
 	}
+	return u.Scheme == "http" || u.Scheme == "https"
 }
-func CheckChainId (){
-	if os.Args[2]==isChainId(){
-		anvilConfig.ChainId= os.Args[2]
-	} else {
-		anvilConfig.ChainId=constants.ChainId
+
+func isForkURL(s string) bool {
+	if !isRpcURL(s) {
+		return false
 	}
+	return strings.Contains(s, "infura") || strings.Contains(s, "alchemy")
+
 }
-func CheckGasLimit(){
-	if os.Args[5]==isGasLimit(){
-		anvilConfig.CheckGasLimit= os.Args[5]
-	} else {
-		anvilConfig.GasLimit=constants.GasLimit
-	}
+
+func isChainId(s string) bool {
+	_, err := strconv.Atoi(s)
+	return err == nil
 }
-func CheckGasPrice(){
-	if os.Args[6]==isGasLimit(){
-		anvilConfig.CheckGasPrice= os.Args[6]
-	} else {
-		anvilConfig.GasPrice=constants.GasPrice
-	}
+
+func isGasLimit(s string) bool {
+	_, err := strconv.ParseUint(s, 10, 64)
+	return err == nil
 }
-func CheckForkURLError(){
-	if os.Args[3]==isForkURL(){
-		anvilConfig.CheckForkURLError=os.Args[3]
-	}
+
+func isGasPrice(s string) bool {
+	_, err := strconv.ParseUint(s, 10, 64)
+	return err == nil
 }
-func CheckPrivateKey() error {
-	if os.Args[4]==isPrivateKey(){
-		anvilConfig.CheckPrivateKey=constants.PrivateKey
-		return nil
-	}
+
+func isPrivateKey(s string) bool {
+	s = strings.TrimPrefix(s, "0x")
+	match, _ := regexp.MatchString("^[0-9a-fA-F]{64}$", s)
+	return match
 }

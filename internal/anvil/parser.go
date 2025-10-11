@@ -7,8 +7,8 @@ import (
 
 func Parser() error {
 	if len(os.Args) > 1 {
-		anvilConfig.RpcURL := os.Args[1]
-		anvilConfig.ChainId := os.Args[2]
+		CheckRpcURL()
+		CheckChainId()
 		anvilConfig.ForkURL := os.Args[3]
 		anvilConfig.PrivateKey := os.Args[4]
 		// Private Keys will be encrypted when we will be dealing withCast
