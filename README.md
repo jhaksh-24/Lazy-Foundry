@@ -61,7 +61,7 @@ Navigate through:
 ## 🤝 Team
 
 * Akshat Jha
-* Anant Shrey Rajput
+* Anant Shrey 
 * Ananth Chavan
 * Amogh Kamath
 * Ameya Pratap Singh
