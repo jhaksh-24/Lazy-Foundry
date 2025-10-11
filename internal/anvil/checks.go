@@ -38,6 +38,7 @@ func CheckForkURLError(){
 }
 func CheckPrivateKey() error {
 	if os.Args[4]==isPrivateKey(){
-		anvilConfig.CheckPrivateKey
+		anvilConfig.CheckPrivateKey=constants.PrivateKey
+		return nil
 	}
 }
