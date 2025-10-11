@@ -7,13 +7,16 @@ import (
 
 func Parser() error {
 	if len(os.Args) > 1 {
-		CheckRpcURL()
-		CheckChainId()
-		anvilConfig.ForkURL := os.Args[3]
-		anvilConfig.PrivateKey := os.Args[4]
+		ImplementRpcURL()
+		ImplementChainId()
+		ImplementForkURL()
+		err = ImplementPrivateKey()
+		if err != nil {
+			return err
+		}
 		// Private Keys will be encrypted when we will be dealing withCast
-		anvilConfig.GasLimit = os.Args[5]
-		anvilConfig.GasPrice = os.Args[6]
+		ImplementGasLimit()
+		ImplementGasPrice()
 		anvilConfig.OutputDir = os.Args[7]
 		return nil
 	}

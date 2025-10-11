@@ -8,32 +8,24 @@ import (
 func ImplementRpcURL() {
 	if isRpcURL(os.Args[1]) {
 		anvilConfig.RpcURL= os.Args[1]
-	} else{
-		anvilConfig.RpcURL=constants.RpcURL
-	}
+	} 
 }
 
 func ImplementChainId() {
 	if isChainId(os.Args[2]){
 		anvilConfig.ChainId= os.Args[2]
-	} else {
-		anvilConfig.ChainId=constants.ChainId
-	}
+	} 
 }
 
 func ImplementGasLimit() {
 	if isGasLimit(os.Args[5]) {
 		anvilConfig.GasLimit= os.Args[5]
-	} else {
-		anvilConfig.GasLimit=constants.GasLimit
 	}
 }
 
 func ImplementGasPrice() {
 	if isGasLimit(os.Args[6]) {
 		anvilConfig.GasPrice= os.Args[6]
-	} else {
-		anvilConfig.GasPrice=constants.GasPrice
 	}
 }
 

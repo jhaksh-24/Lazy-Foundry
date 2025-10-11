@@ -14,6 +14,14 @@ type AnvilConfig struct {
 	OutputDir string
 }
 
+var anvilConfig AnvilConfig
+
 func Initializer() {
-	var anvilConfig AnvilConfig
+	anvilConfig = AnvilConfig{
+		RpcURL:    DefaultRPCURL,
+		ChainID:   DefaultChainID,
+		GasLimit:  DefaultGasLimit,
+		GasPrice:  DefaultGasPrice,
+		OutputDir: ConfigDirName,
+	}
 }
