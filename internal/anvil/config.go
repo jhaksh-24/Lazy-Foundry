@@ -10,7 +10,7 @@ type AnvilConfig struct {
 	ForkURL string
 	PrivateKey string
 	GasLimit int
-	GasPrice int
+	GasFee int
 	OutputDir string
 }
 
@@ -21,7 +21,7 @@ func Initializer() {
 		RpcURL:    DefaultRPCURL,
 		ChainID:   DefaultChainID,
 		GasLimit:  DefaultGasLimit,
-		GasPrice:  DefaultGasPrice,
+		GasPrice:  DefaultGasFee,
 		OutputDir: ConfigDirName,
 	}
 }

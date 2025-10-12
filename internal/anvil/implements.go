@@ -11,9 +11,9 @@ func ImplementRpcURL() {
 	} 
 }
 
-func ImplementChainId() {
-	if isChainId(os.Args[2]){
-		anvilConfig.ChainId= os.Args[2]
+func ImplementChainID() {
+	if isChainID(os.Args[2]){
+		anvilConfig.ChainID= os.Args[2]
 	} 
 }
 
@@ -23,9 +23,9 @@ func ImplementGasLimit() {
 	}
 }
 
-func ImplementGasPrice() {
-	if isGasLimit(os.Args[6]) {
-		anvilConfig.GasPrice= os.Args[6]
+func ImplementGasFee() {
+	if isGasFee(os.Args[6]) {
+		anvilConfig.GasFee= os.Args[6]
 	}
 }
 
