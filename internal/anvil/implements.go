@@ -2,41 +2,64 @@ package anvil
 
 import (
 	"fmt"
-	"os"
 )
 
-func ImplementRpcURL() {
-	if isRpcURL(os.Args[1]) {
-		anvilConfig.RpcURL= os.Args[1]
+func ImplementRpcURL(s string) {
+	if s == "" {
+        return
+    }
+
+	if isRpcURL(s) {
+		anvilConfig.RpcURL = s
+	}
+}
+
+func ImplementChainID(s string) {
+	if s == "" {
+        return
+    }
+
+	checkPass, id := isChainID(s)
+	if checkPass {
+		 anvilConfig.ChainID = id
 	} 
 }
 
-func ImplementChainID() {
-	if isChainID(os.Args[2]){
-		anvilConfig.ChainID= os.Args[2]
-	} 
-}
+func ImplementGasLimit(s string) {
+	if s == "" {
+		return
+	}
 
-func ImplementGasLimit() {
-	if isGasLimit(os.Args[5]) {
-		anvilConfig.GasLimit= os.Args[5]
+	checkPass, gl := isGasLimit(s)
+	if checkPass {
+		anvilConfig.GasLimit = gl
 	}
 }
 
-func ImplementGasFee() {
-	if isGasFee(os.Args[6]) {
-		anvilConfig.GasFee= os.Args[6]
+func ImplementGasFee(s string) {
+	if s == "" {
+        return
+    }
+
+	checkPass, gf := isGasFee(s)
+	if checkPass {
+		anvilConfig.GasFee= gf
 	}
 }
 
-func ImplementForkURL() {
-	if isForkURL(os.Args[3]) {
-		anvilConfig.ForkURL=os.Args[3]
+func ImplementForkURL(s string) {
+	if s == "" {
+        return
+    }
+
+	if isForkURL(s) {
+		anvilConfig.ForkURL = s
 	}
 }
-func ImplementPrivateKey() error {
-	if isPrivateKey(os.Args[4]) {
-		anvilConfig.CheckPrivateKey = os.Args[4]
+
+func ImplementPrivateKey(s string) error {
+	if isPrivateKey(s) {
+		anvilConfig.PrivateKey = s
 		return nil
 	}
 	return fmt.Errorf("Private key was not entered")

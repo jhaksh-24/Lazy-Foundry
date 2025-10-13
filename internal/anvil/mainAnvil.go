@@ -1,13 +1,13 @@
 package anvil
 
-import (
-	"fmt"
-)
+//import (
+//	"fmt"
+//)
 
 func mainAnvil() {
 	Initializer()
-	err := Parser()
-	if err != nil {
-		fmt.Println("Error:" ,err)
-	}
+//	err := Parser()
+//	if err != nil {
+//		fmt.Println("Error:" ,err)
+//	}
 }

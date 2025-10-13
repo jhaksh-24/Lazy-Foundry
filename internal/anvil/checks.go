@@ -23,19 +23,28 @@ func isForkURL(s string) bool {
 
 }
 
-func isChainID(s string) bool {
-	_, err := strconv.Atoi(s)
-	return err == nil
+func isChainID(s string) (bool, int) {
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return false, 0
+	}
+	return true, n
 }
 
-func isGasLimit(s string) bool {
-	_, err := strconv.ParseUint(s, 10, 64)
-	return err == nil
+func isGasLimit(s string) (bool, uint64) {
+	gl, err := strconv.ParseUint(s, 10, 64)
+	if err != nil {
+		return false, 0
+	}
+	return err == nil, gl
 }
 
-func isGasFee(s string) bool {
-	_, err := strconv.ParseUint(s, 10, 64)
-	return err == nil
+func isGasFee(s string) (bool, uint64) {
+	gf, err := strconv.ParseUint(s, 10, 64)
+	if err != nil {
+		return false, 0
+	}
+	return err == nil, gf
 }
 
 func isPrivateKey(s string) bool {
