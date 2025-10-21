@@ -1,13 +1,14 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"github.com/jhaksh-24/Lazy-Foundry/internal/forge"
+//	"fmt"
+//	"os"
+//	"github.com/jhaksh-24/Lazy-Foundry/internal/forge"
+	"github.com/jhaksh-24/Lazy-Foundry/internal/anvil"
 )
 
 func main() {
-	if len(os.Args) < 2 {
+/*	if len(os.Args) < 2 {
 		fmt.Println("Command not provided")
 		return
 	}
@@ -17,5 +18,7 @@ func main() {
 
 	if err != nil {
 		fmt.Println("Error:", err)
-	}
+	}*/
+
+	anvil.StartAnvilUI()
 }
