@@ -8,9 +8,9 @@ import (
 
 func Coverage(flags ...string) error {
 	args := []string{"coverage"}
-	args = append{args, flags...}
+	args = append(args, flags...)
 
-	cmd := exec.Command("forge", args)
+	cmd := exec.Command("forge", args...)
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
