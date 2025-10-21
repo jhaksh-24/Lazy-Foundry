@@ -5,6 +5,6 @@ import (
 )
 
 func Init() error {
-	fmt.Println("Forge init executed Successfully")
+	fmt.Println("Forge init executed Successfully!")
 	return nil
 }
