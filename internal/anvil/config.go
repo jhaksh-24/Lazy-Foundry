@@ -94,3 +94,49 @@ func LoadPreset(nameString) error {
 	anvilConfig = preset
 	return nil
 }
+
+func SaveAllPresets() error {
+	data, err := json.MarshalIndent(configStore, "", "  ")
+	if err != nil {
+		return fmt.Errorf("could not marshal config: %w", err)
+	}
+
+	err := os.WriteFile(configPath, data, 0644)
+	if err != nil {
+		return fmt.Errorf("Couldnt write into config file: %w", err)
+	}
+
+	return nil
+}
+
+func LoadAllPresets() error {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return fmt.Errorf("could not read config file: %w", err)
+	}
+
+	err := json.Unmarshal(data, &configStore)
+	if err != nil {
+		return fmt.Errorf("config file could not be passed: %w", err)
+	}
+
+	return nil
+}
+
+func ListPresets() []string {
+	names := make([]string, 0, len(configStore.Presets))
+	for name := range configStore.Presets {
+		names = append(names, name)
+	}
+
+	return names
+}
+
+func GetPreset(name string) (AnvilConfig, error) {
+	preset, exists := configStore.Presets[name]
+	if !exists {
+		return AnvilConfig{}, fmt.Errorf("preset '%s' not found", name)
+	}
+
+	return preset, nil
+}
