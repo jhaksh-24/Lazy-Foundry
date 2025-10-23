@@ -11,7 +11,7 @@ type AnvilConfig struct {
 	RpcURL     string `json:"rpc_url"` 
 	ChainID    int    `json:"chain_id"`
 	ForkURL    string `json:"fork_url,omitempty"`
-	PrivateKey string `json:"private_key, omitempty"`
+	PrivateKey string `json:"private_key,omitempty"`
 	GasLimit   uint64 `json:"gas_limit"`
 	GasFee     uint64 `json:"gas_fee"`
 	OutputDir  string `json:"output_dir"`
@@ -23,7 +23,7 @@ type ConfigStore struct {
 
 var (
 	anvilConfig AnvilConfig
-	configStrore ConfigStore
+	configStore ConfigStore
 	configPath string
 )
 
@@ -50,7 +50,7 @@ func Initializer() {
 
 	configStore.Presets = make(map[string]AnvilConfig)
 
-	err := LoadAllPresets()
+	err = LoadAllPresets()
 	if err != nil {
 		CreateDefaultPresets()
 	}
@@ -85,7 +85,7 @@ func SavePreset(name string) error {
 	return SaveAllPresets()
 }
 
-func LoadPreset(nameString) error {
+func LoadPreset(name string) error {
 	preset, exists := configStore.Presets[name]
 	if !exists {
 		return fmt.Errorf("failed to fetch preset %s", name)
@@ -101,7 +101,7 @@ func SaveAllPresets() error {
 		return fmt.Errorf("could not marshal config: %w", err)
 	}
 
-	err := os.WriteFile(configPath, data, 0644)
+	err = os.WriteFile(configPath, data, 0644)
 	if err != nil {
 		return fmt.Errorf("Couldnt write into config file: %w", err)
 	}
@@ -115,7 +115,7 @@ func LoadAllPresets() error {
 		return fmt.Errorf("could not read config file: %w", err)
 	}
 
-	err := json.Unmarshal(data, &configStore)
+	err = json.Unmarshal(data, &configStore)
 	if err != nil {
 		return fmt.Errorf("config file could not be passed: %w", err)
 	}
@@ -142,7 +142,7 @@ func GetPreset(name string) (AnvilConfig, error) {
 }
 
 func DeletePreset(name string) error {
-	_, exists := configStore.Presets[name];
+	_, exists := configStore.Presets[name]
 	if !exists {
 		return fmt.Errorf("preset '%s' not found", name)
 	}	
