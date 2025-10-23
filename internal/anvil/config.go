@@ -140,3 +140,40 @@ func GetPreset(name string) (AnvilConfig, error) {
 
 	return preset, nil
 }
+
+func DeletePreset(name string) error {
+	_, exists := configStore.Presets[name];
+	if !exists {
+		return fmt.Errorf("preset '%s' not found", name)
+	}	
+
+	delete(configStore.Presets, name)
+
+	return SaveAllPresets()
+}
+
+func GetCurrentConfig() AnvilConfig {
+	return anvilConfig
+}
+
+func GetFlags() []string {
+	flags := []string{
+		"--rpc-url", anvilConfig.RpcURL,
+		"--chain-id", fmt.Sprintf("%d", anvilConfig.ChainID),
+	}
+
+	if anvilConfig.ForkURL != "" {
+		flags = append(flags, "--fork-url", anvilConfig.ForkURL)
+	}
+
+	if anvilConfig.PrivateKey != "" {
+		flags = append(flags, "--private-key", anvilConfig.PrivateKey)
+	}
+
+	flags = append(flags,
+		"--gas-limit", fmt.Sprintf("%d", anvilConfig.GasLimit),
+		"--gas-price", fmt.Sprintf("%d", anvilConfig.GasFee),
+	)
+
+	return flags
+}
