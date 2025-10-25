@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-
 	"github.com/jhaksh-24/Lazy-Foundry/internal/anvil"
 	"github.com/jhaksh-24/Lazy-Foundry/internal/forge"
 	"github.com/jhaksh-24/Lazy-Foundry/internal/tui"
@@ -37,7 +36,7 @@ func main() {
 	case "help", "-h", "--help":
 		printUsage()
 	default:
-		fmt.Printf("❌ Unknown mode: %s\n\n", mode)
+		fmt.Printf("Unknown mode: %s\n\n", mode)
 		printUsage()
 	}
 }
@@ -45,7 +44,7 @@ func main() {
 // handleForge processes all forge-related commands
 func handleForge() {
 	if len(os.Args) < 3 {
-		fmt.Println("❌ Usage: lazyfoundry forge <command> [args...]")
+		fmt.Println("Usage: lazyfoundry forge <command> [args...]")
 		fmt.Println("\nAvailable commands:")
 		fmt.Println("  build, test, init, coverage, create, script, install")
 		return
@@ -90,7 +89,7 @@ func handleForge() {
 
 	// Handle any errors that occurred
 	if err != nil {
-		fmt.Printf("❌ Error: %s\n", err)
+		fmt.Printf("Error: %s\n", err)
 		os.Exit(1)
 	}
 }
@@ -101,7 +100,7 @@ func handleAnvil() {
 	anvil.Initializer()
 
 	if len(os.Args) < 3 {
-		fmt.Println("❌ Usage: lazyfoundry anvil <command> [args...]")
+		fmt.Println("Usage: lazyfoundry anvil <command> [args...]")
 		fmt.Println("\nAvailable commands:")
 		fmt.Println("  add <n> <rpc-url> <chain-id> [fork-url] [private-key]")
 		fmt.Println("  list")
@@ -116,7 +115,7 @@ func handleAnvil() {
 
 	// Execute the anvil command
 	if err := anvil.Execute(command, args...); err != nil {
-		fmt.Printf("❌ Error: %s\n", err)
+		fmt.Printf("Error: %s\n", err)
 		os.Exit(1)
 	}
 }
@@ -125,7 +124,7 @@ func handleAnvil() {
 func printUsage() {
 	fmt.Println(`
 ╔═══════════════════════════════════════════════════════════════╗
-║                     🧰 Lazy-Foundry                           ║
+║                     Lazy-Foundry                              ║
 ║          Simplified Foundry Workflow Tool                     ║
 ╚═══════════════════════════════════════════════════════════════╝
 
