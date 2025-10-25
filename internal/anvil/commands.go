@@ -1,5 +1,12 @@
 package anvil
 
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
 func Execute(command string, args ...string) error {
 	switch command {
 		case "add":
@@ -78,6 +85,39 @@ func ListPresetsCLI() error {
 	return nil
 }
 
+func ShowPresetCLI(args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("usage: anvil show <preset-name>")
+	}
+
+	name := args[0]
+	preset, err := GetPreset(name)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("\n📦 Preset: %s\n", name)
+	fmt.Println("─────────────────────────────────────────")
+	fmt.Printf("  RPC URL:      %s\n", preset.RpcURL)
+	fmt.Printf("  Chain ID:     %d\n", preset.ChainID)
+	fmt.Printf("  Gas Limit:    %d\n", preset.GasLimit)
+	fmt.Printf("  Gas Fee:      %d\n", preset.GasFee)
+	fmt.Printf("  Output Dir:   %s\n", preset.OutputDir)
+
+	if preset.ForkURL != "" {
+		fmt.Printf("  Fork URL:     %s\n", preset.ForkURL)
+	}
+
+	if preset.PrivateKey != "" {
+		// Only show first 10 chars for security
+		fmt.Printf("  Private Key:  %s... (hidden)\n", preset.PrivateKey[:10])
+	}
+
+	fmt.Println("─────────────────────────────────────────\n")
+	return nil
+}
+
+
 func DeletePresetCLI(args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("usage: anvil delete <preset-name>")
@@ -90,7 +130,7 @@ func DeletePresetCLI(args []string) error {
 		return err
 	}
 
-	err := DeletePreset(name)
+	err = DeletePreset(name)
 	if err != nil {
 		return fmt.Errorf("failed to delete preset: %w", err)
 	}
