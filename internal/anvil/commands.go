@@ -50,7 +50,7 @@ func AddPresetCLI(args []string) error {
 		return fmt.Errorf("failed to save preset: %w", err)
 	}
 
-	fmt.Println("Preset '%s' created successfully!\n", name)
+	fmt.Printf("Preset '%s' created successfully!\n", name)
 	return nil
 }
 
@@ -113,7 +113,7 @@ func ShowPresetCLI(args []string) error {
 		fmt.Printf("  Private Key:  %s... (hidden)\n", preset.PrivateKey[:10])
 	}
 
-	fmt.Println("─────────────────────────────────────────\n")
+	fmt.Printf("─────────────────────────────────────────\n")
 	return nil
 }
 
@@ -166,7 +166,7 @@ func StartAnvil(args ...string) error {
 	fmt.Printf("Gas Limit: %d\n", anvilConfig.GasLimit)
 	fmt.Println("\n─────────────────────────────────────────")
 	fmt.Println("Running: anvil " + strings.Join(anvilArgs, " "))
-	fmt.Println("─────────────────────────────────────────\n")
+	fmt.Printf("─────────────────────────────────────────\n")
 
 	cmd := exec.Command("anvil", anvilArgs...)
 

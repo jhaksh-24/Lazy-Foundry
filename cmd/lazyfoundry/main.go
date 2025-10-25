@@ -110,7 +110,7 @@ func handleAnvil() {
 }
 
 func printUsage() {
-	fmt.Println(`
+	fmt.Printf(`
 ╔═══════════════════════════════════════════════════════════════╗
 ║                     Lazy-Foundry                              ║
 ║          Simplified Foundry Workflow Tool                     ║
