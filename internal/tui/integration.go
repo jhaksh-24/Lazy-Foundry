@@ -101,3 +101,14 @@ func executeAnvil(command string, args ...string) (string, error) {
 		return "", fmt.Errorf("unknown anvil command: %s", command)
 	}
 }
+
+func captureCommandOutput(name string, args ...string) (string, error) {
+	cmd := exec.Command(name, args...)
+	
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return string(output), err
+	}
+	
+	return string(output), nil
+}
