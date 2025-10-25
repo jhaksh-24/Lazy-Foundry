@@ -2,31 +2,29 @@ package forge
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
-	"strings"
 )
 
 func Create(contractName string, flags ...string) error {
 	if contractName == "" {
-		return fmt.Errorf("Contract Name has to be given")
+		return fmt.Errorf("contract name is required")
 	}
-
+	
 	args := []string{"create", contractName}
 	args = append(args, flags...)
-
+	
 	cmd := exec.Command("forge", args...)
-
-	output, err := cmd.CombinedOutput()
-
-	if err != nil {
-		return fmt.Errorf("forge create failed: %w\noutput: %s", err, string(output))
+	
+	// Stream output so user sees deployment details and contract address
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("forge create failed: %w", err)
 	}
-
-	fmt.Println("Forge create executed Successfully!")
-
-	if len(output) > 0 {
-		fmt.Println(strings.TrimSpace(string(output)))
-	}
-
+	
+	fmt.Println("\n✅ Contract deployed successfully!")
+	
 	return nil
 }

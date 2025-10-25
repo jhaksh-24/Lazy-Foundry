@@ -2,26 +2,26 @@ package forge
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
-	"strings"
 )
 
 func Coverage(flags ...string) error {
 	args := []string{"coverage"}
 	args = append(args, flags...)
-
+	
 	cmd := exec.Command("forge", args...)
-	output, err := cmd.CombinedOutput()
-
-	if err != nil {
-		return fmt.Errorf("forge coverage failed: %w\nOutput is: %s", err, string(output))
+	
+	// Stream output directly to terminal so user sees coverage report
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	
+	// Run the command
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("forge coverage failed: %w", err)
 	}
-
-	fmt.Println("Forge coverage executed Successfully!")
-
-	if len(output) > 0 {
-		fmt.Println(strings.TrimSpace(string(output)))
-	}
-
+	
+	fmt.Println("\n✅ Forge coverage executed successfully!")
+	
 	return nil
 }
