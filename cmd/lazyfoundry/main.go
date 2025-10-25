@@ -6,20 +6,30 @@ import (
 
 	"github.com/jhaksh-24/Lazy-Foundry/internal/anvil"
 	"github.com/jhaksh-24/Lazy-Foundry/internal/forge"
+	"github.com/jhaksh-24/Lazy-Foundry/internal/tui"
 )
 
 func main() {
-	// Check if user provided any arguments
+	// If no arguments, launch TUI
 	if len(os.Args) < 2 {
-		printUsage()
+		if err := tui.Run(); err != nil {
+			fmt.Printf("Error: %s\n", err)
+			os.Exit(1)
+		}
 		return
 	}
 
-	// First argument is the mode (forge or anvil)
+	// First argument is the mode (forge, anvil, or special flags)
 	mode := os.Args[1]
 
 	// Route to the correct handler based on mode
 	switch mode {
+	case "tui":
+		// Explicit TUI launch
+		if err := tui.Run(); err != nil {
+			fmt.Printf("Error: %s\n", err)
+			os.Exit(1)
+		}
 	case "forge":
 		handleForge()
 	case "anvil":
@@ -27,14 +37,15 @@ func main() {
 	case "help", "-h", "--help":
 		printUsage()
 	default:
-		fmt.Printf("Unknown mode: %s\n\n", mode)
+		fmt.Printf("❌ Unknown mode: %s\n\n", mode)
 		printUsage()
 	}
 }
 
+// handleForge processes all forge-related commands
 func handleForge() {
 	if len(os.Args) < 3 {
-		fmt.Println("Usage: lazyfoundry forge <command> [args...]")
+		fmt.Println("❌ Usage: lazyfoundry forge <command> [args...]")
 		fmt.Println("\nAvailable commands:")
 		fmt.Println("  build, test, init, coverage, create, script, install")
 		return
@@ -79,7 +90,7 @@ func handleForge() {
 
 	// Handle any errors that occurred
 	if err != nil {
-		fmt.Printf(" Error: %s\n", err)
+		fmt.Printf("❌ Error: %s\n", err)
 		os.Exit(1)
 	}
 }
@@ -90,7 +101,7 @@ func handleAnvil() {
 	anvil.Initializer()
 
 	if len(os.Args) < 3 {
-		fmt.Println("Usage: lazyfoundry anvil <command> [args...]")
+		fmt.Println("❌ Usage: lazyfoundry anvil <command> [args...]")
 		fmt.Println("\nAvailable commands:")
 		fmt.Println("  add <n> <rpc-url> <chain-id> [fork-url] [private-key]")
 		fmt.Println("  list")
@@ -103,21 +114,25 @@ func handleAnvil() {
 	command := os.Args[2]
 	args := os.Args[3:]
 
+	// Execute the anvil command
 	if err := anvil.Execute(command, args...); err != nil {
-		fmt.Printf(" Error: %s\n", err)
+		fmt.Printf("❌ Error: %s\n", err)
 		os.Exit(1)
 	}
 }
 
+// printUsage displays help information
 func printUsage() {
-	fmt.Printf(`
+	fmt.Println(`
 ╔═══════════════════════════════════════════════════════════════╗
-║                     Lazy-Foundry                              ║
+║                     🧰 Lazy-Foundry                           ║
 ║          Simplified Foundry Workflow Tool                     ║
 ╚═══════════════════════════════════════════════════════════════╝
 
 USAGE:
-  lazyfoundry <mode> <command> [args...]
+  lazyfoundry                    Launch interactive TUI
+  lazyfoundry tui                Launch interactive TUI (explicit)
+  lazyfoundry <mode> <command>   Run CLI command
 
 MODES:
   forge   Build, test, and deploy smart contracts
@@ -156,6 +171,9 @@ ANVIL COMMANDS:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 EXAMPLES:
+
+  # Launch TUI (recommended for beginners)
+  lazyfoundry
 
   # Create a local preset
   lazyfoundry anvil add local http://127.0.0.1:8545 31337
