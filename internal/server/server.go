@@ -11,7 +11,6 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/jhaksh-24/Lazy-Foundry/internal/anvil"
-	"github.com/jhaksh-24/Lazy-Foundry/internal/forge"
 )
 
 var upgrader = websocket.Upgrader{
@@ -21,8 +20,8 @@ var upgrader = websocket.Upgrader{
 }
 
 type Server struct {
-	anvilCmd *exec.Cmd
-	mu       sync.Mutex
+	anvilCmd  *exec.Cmd
+	mu        sync.Mutex
 	wsClients map[*websocket.Conn]bool
 	wsMu      sync.Mutex
 }
@@ -40,7 +39,7 @@ type Response struct {
 }
 
 type StreamMessage struct {
-	Type    string `json:"type"`    // "output", "error", "complete"
+	Type    string `json:"type"`
 	Content string `json:"content"`
 	Command string `json:"command"`
 }
@@ -52,17 +51,12 @@ func New() *Server {
 }
 
 func (s *Server) Start(port string) error {
-	// Initialize anvil presets
 	anvil.Initializer()
 
-	// Serve static files
 	fs := http.FileServer(http.Dir("./Frontend"))
 	http.Handle("/", fs)
 
-	// API endpoint
 	http.HandleFunc("/api/execute", s.handleExecute)
-	
-	// WebSocket endpoint for real-time streaming
 	http.HandleFunc("/ws", s.handleWebSocket)
 
 	fmt.Printf("🚀 Lazy-Foundry Web Server starting on http://localhost:%s\n", port)
@@ -168,7 +162,7 @@ func (s *Server) handleAnvil(command string, args []string) (string, error) {
 		if len(args) < 3 {
 			return "", fmt.Errorf("usage: anvil add <name> <rpc-url> <chain-id> [fork-url] [private-key]")
 		}
-		
+
 		name := args[0]
 		anvil.Initializer()
 		anvil.ImplementRpcURL(args[1])
@@ -188,7 +182,7 @@ func (s *Server) handleAnvil(command string, args []string) (string, error) {
 			return "", fmt.Errorf("failed to save preset: %w", err)
 		}
 
-		return fmt.Sprintf("Preset '%s' created successfully!", name), nil
+		return fmt.Sprintf("✅ Preset '%s' created successfully!", name), nil
 
 	case "list":
 		names := anvil.ListPresets()
@@ -258,12 +252,14 @@ func (s *Server) handleAnvil(command string, args []string) (string, error) {
 			return "", fmt.Errorf("failed to delete preset: %w", err)
 		}
 
-		return fmt.Sprintf("Preset '%s' deleted successfully!", name), nil
+		return fmt.Sprintf("✅ Preset '%s' deleted successfully!", name), nil
 
 	case "start":
 		return s.startAnvilNode(args)
+
 	case "stop":
 		return s.stopAnvilNode()
+
 	default:
 		return "", fmt.Errorf("unknown anvil command: %s", command)
 	}
@@ -271,13 +267,12 @@ func (s *Server) handleAnvil(command string, args []string) (string, error) {
 
 func (s *Server) runCommandWithOutput(name string, args ...string) (string, error) {
 	cmd := exec.Command(name, args...)
-	
 	output, err := cmd.CombinedOutput()
-	
+
 	if err != nil {
 		return string(output), fmt.Errorf("command failed: %w", err)
 	}
-	
+
 	return string(output), nil
 }
 
@@ -299,7 +294,7 @@ func (s *Server) startAnvilNode(args []string) (string, error) {
 	}
 
 	config := anvil.GetCurrentConfig()
-	
+
 	anvilArgs := []string{
 		"--chain-id", fmt.Sprintf("%d", config.ChainID),
 		"--gas-limit", fmt.Sprintf("%d", config.GasLimit),
@@ -311,27 +306,25 @@ func (s *Server) startAnvilNode(args []string) (string, error) {
 	}
 
 	s.anvilCmd = exec.Command("anvil", anvilArgs...)
-	
-	// Capture output for streaming to websocket clients
+
 	stdout, _ := s.anvilCmd.StdoutPipe()
 	stderr, _ := s.anvilCmd.StderrPipe()
-	
+
 	if err := s.anvilCmd.Start(); err != nil {
 		s.anvilCmd = nil
 		return "", fmt.Errorf("failed to start anvil: %w", err)
 	}
 
-	// Stream output to websocket clients
 	go s.streamOutput(stdout, "anvil")
 	go s.streamOutput(stderr, "anvil")
 
-	output := fmt.Sprintf("Anvil started with preset '%s'\n", presetName)
+	output := fmt.Sprintf("✅ Anvil started with preset '%s'\n", presetName)
 	output += fmt.Sprintf("Chain ID: %d\n", config.ChainID)
 	output += fmt.Sprintf("RPC URL: %s\n", config.RpcURL)
 	if config.ForkURL != "" {
 		output += fmt.Sprintf("Forking from: %s\n", config.ForkURL)
 	}
-	
+
 	return output, nil
 }
 
@@ -348,7 +341,7 @@ func (s *Server) stopAnvilNode() (string, error) {
 	}
 
 	s.anvilCmd = nil
-	return "Anvil stopped successfully", nil
+	return "✅ Anvil stopped successfully", nil
 }
 
 func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -369,7 +362,6 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		conn.Close()
 	}()
 
-	// Keep connection alive and handle incoming messages
 	for {
 		var req Request
 		err := conn.ReadJSON(&req)
@@ -377,7 +369,6 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		// For streaming commands, handle them specially
 		if req.Mode == "forge" && (req.Command == "test" || req.Command == "coverage" || req.Command == "build") {
 			s.executeStreamingCommand(conn, req)
 		} else {
@@ -389,7 +380,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) executeStreamingCommand(conn *websocket.Conn, req Request) {
 	var cmd *exec.Cmd
-	
+
 	switch req.Command {
 	case "build":
 		cmd = exec.Command("forge", append([]string{"build"}, req.Args...)...)
@@ -410,7 +401,6 @@ func (s *Server) executeStreamingCommand(conn *websocket.Conn, req Request) {
 		return
 	}
 
-	// Stream stdout
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
@@ -422,7 +412,6 @@ func (s *Server) executeStreamingCommand(conn *websocket.Conn, req Request) {
 		}
 	}()
 
-	// Stream stderr
 	go func() {
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
@@ -434,9 +423,8 @@ func (s *Server) executeStreamingCommand(conn *websocket.Conn, req Request) {
 		}
 	}()
 
-	// Wait for command to finish
 	err := cmd.Wait()
-	
+
 	if err != nil {
 		conn.WriteJSON(StreamMessage{
 			Type:    "complete",
@@ -446,7 +434,7 @@ func (s *Server) executeStreamingCommand(conn *websocket.Conn, req Request) {
 	} else {
 		conn.WriteJSON(StreamMessage{
 			Type:    "complete",
-			Content: "Command completed successfully",
+			Content: "✅ Command completed successfully",
 			Command: req.Command,
 		})
 	}
@@ -456,7 +444,7 @@ func (s *Server) streamOutput(reader io.Reader, source string) {
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		line := scanner.Text()
-		
+
 		s.wsMu.Lock()
 		for client := range s.wsClients {
 			client.WriteJSON(StreamMessage{
