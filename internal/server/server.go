@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -53,13 +56,60 @@ func New() *Server {
 func (s *Server) Start(port string) error {
 	anvil.Initializer()
 
-	fs := http.FileServer(http.Dir("./Frontend"))
+	// Try multiple possible frontend locations
+	frontendPaths := []string{
+		"./Frontend",
+		"./frontend",
+		"../Frontend",
+		"../frontend",
+	}
+
+	var frontendDir string
+	for _, path := range frontendPaths {
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			continue
+		}
+		if _, err := os.Stat(absPath); err == nil {
+			frontendDir = absPath
+			break
+		}
+	}
+
+	if frontendDir == "" {
+		log.Println("⚠️  Warning: Frontend directory not found. Trying current directory...")
+		frontendDir = "."
+	}
+
+	log.Printf("📁 Serving frontend from: %s\n", frontendDir)
+
+	// Serve static files
+	fs := http.FileServer(http.Dir(frontendDir))
 	http.Handle("/", fs)
 
+	// API endpoints
 	http.HandleFunc("/api/execute", s.handleExecute)
 	http.HandleFunc("/ws", s.handleWebSocket)
 
-	fmt.Printf("🚀 Lazy-Foundry Web Server starting on http://localhost:%s\n", port)
+	// Health check endpoint
+	http.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	})
+
+	fmt.Printf("\n")
+	fmt.Printf("╔═══════════════════════════════════════════════════════════════╗\n")
+	fmt.Printf("║          🚀 Lazy-Foundry Web Server Started                   ║\n")
+	fmt.Printf("╚═══════════════════════════════════════════════════════════════╝\n")
+	fmt.Printf("\n")
+	fmt.Printf("  🌐 Server running at: http://localhost:%s\n", port)
+	fmt.Printf("  📁 Frontend directory: %s\n", frontendDir)
+	fmt.Printf("  🔌 WebSocket endpoint: ws://localhost:%s/ws\n", port)
+	fmt.Printf("  🔧 API endpoint: http://localhost:%s/api/execute\n", port)
+	fmt.Printf("\n")
+	fmt.Printf("  Press Ctrl+C to stop the server\n")
+	fmt.Printf("\n")
+
 	return http.ListenAndServe(":"+port, nil)
 }
 
@@ -84,12 +134,15 @@ func (s *Server) handleExecute(w http.ResponseWriter, r *http.Request) {
 
 	var req Request
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("❌ Error decoding request: %v\n", err)
 		json.NewEncoder(w).Encode(Response{
 			Success: false,
-			Message: "Invalid request format",
+			Message: "Invalid request format: " + err.Error(),
 		})
 		return
 	}
+
+	log.Printf("📨 Received command: mode=%s, command=%s, args=%v\n", req.Mode, req.Command, req.Args)
 
 	response := s.executeCommand(req)
 	json.NewEncoder(w).Encode(response)
@@ -112,6 +165,7 @@ func (s *Server) executeCommand(req Request) Response {
 	}
 
 	if err != nil {
+		log.Printf("❌ Command failed: %v\n", err)
 		return Response{
 			Success: false,
 			Message: err.Error(),
@@ -119,6 +173,7 @@ func (s *Server) executeCommand(req Request) Response {
 		}
 	}
 
+	log.Printf("✅ Command succeeded\n")
 	return Response{
 		Success: true,
 		Message: "Command executed successfully",
@@ -127,6 +182,8 @@ func (s *Server) executeCommand(req Request) Response {
 }
 
 func (s *Server) handleForge(command string, args []string) (string, error) {
+	log.Printf("🔨 Executing forge command: %s\n", command)
+	
 	switch command {
 	case "build":
 		return s.runCommandWithOutput("forge", append([]string{"build"}, args...)...)
@@ -157,6 +214,8 @@ func (s *Server) handleForge(command string, args []string) (string, error) {
 }
 
 func (s *Server) handleAnvil(command string, args []string) (string, error) {
+	log.Printf("⚒️  Executing anvil command: %s\n", command)
+	
 	switch command {
 	case "add":
 		if len(args) < 3 {
@@ -289,6 +348,8 @@ func (s *Server) startAnvilNode(args []string) (string, error) {
 		presetName = args[0]
 	}
 
+	log.Printf("🔄 Loading preset: %s\n", presetName)
+
 	if err := anvil.LoadPreset(presetName); err != nil {
 		return "", fmt.Errorf("failed to load preset '%s': %w", presetName, err)
 	}
@@ -304,6 +365,8 @@ func (s *Server) startAnvilNode(args []string) (string, error) {
 	if config.ForkURL != "" {
 		anvilArgs = append(anvilArgs, "--fork-url", config.ForkURL)
 	}
+
+	log.Printf("🚀 Starting Anvil with args: %v\n", anvilArgs)
 
 	s.anvilCmd = exec.Command("anvil", anvilArgs...)
 
@@ -325,6 +388,8 @@ func (s *Server) startAnvilNode(args []string) (string, error) {
 		output += fmt.Sprintf("Forking from: %s\n", config.ForkURL)
 	}
 
+	log.Printf("✅ Anvil started successfully\n")
+
 	return output, nil
 }
 
@@ -336,20 +401,26 @@ func (s *Server) stopAnvilNode() (string, error) {
 		return "", fmt.Errorf("no anvil instance running")
 	}
 
+	log.Printf("🛑 Stopping Anvil...\n")
+
 	if err := s.anvilCmd.Process.Kill(); err != nil {
 		return "", fmt.Errorf("failed to stop anvil: %w", err)
 	}
 
 	s.anvilCmd = nil
+	log.Printf("✅ Anvil stopped\n")
+	
 	return "✅ Anvil stopped successfully", nil
 }
 
 func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		fmt.Println("WebSocket upgrade error:", err)
+		log.Printf("❌ WebSocket upgrade error: %v\n", err)
 		return
 	}
+
+	log.Printf("🔌 WebSocket client connected\n")
 
 	s.wsMu.Lock()
 	s.wsClients[conn] = true
@@ -360,6 +431,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		delete(s.wsClients, conn)
 		s.wsMu.Unlock()
 		conn.Close()
+		log.Printf("🔌 WebSocket client disconnected\n")
 	}()
 
 	for {
@@ -368,6 +440,8 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			break
 		}
+
+		log.Printf("📨 WebSocket command: mode=%s, command=%s\n", req.Mode, req.Command)
 
 		if req.Mode == "forge" && (req.Command == "test" || req.Command == "coverage" || req.Command == "build") {
 			s.executeStreamingCommand(conn, req)
