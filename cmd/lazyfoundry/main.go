@@ -38,12 +38,6 @@ func main() {
 			fmt.Printf("Error starting server: %s\n", err)
 			os.Exit(1)
 		}
-	case "tui":
-		// Explicit TUI launch
-		if err := tui.Run(); err != nil {
-			fmt.Printf("Error: %s\n", err)
-			os.Exit(1)
-		}
 	case "forge":
 		handleForge()
 	case "anvil":
@@ -117,11 +111,12 @@ func handleAnvil() {
 	if len(os.Args) < 3 {
 		fmt.Println("❌ Usage: lazyfoundry anvil <command> [args...]")
 		fmt.Println("\nAvailable commands:")
-		fmt.Println("  add <n> <rpc-url> <chain-id> [fork-url] [private-key]")
+		fmt.Println("  add <name> <rpc-url> <chain-id> [fork-url] [private-key]")
 		fmt.Println("  list")
-		fmt.Println("  show <n>")
-		fmt.Println("  delete <n>")
+		fmt.Println("  show <name>")
+		fmt.Println("  delete <name>")
 		fmt.Println("  start [preset-name]")
+		fmt.Println("  stop")
 		return
 	}
 
@@ -146,12 +141,10 @@ func printUsage() {
 USAGE:
   lazyfoundry                    Launch Web Interface (default)
   lazyfoundry web [port]         Launch Web Interface on specified port
-  lazyfoundry tui                Launch Terminal User Interface
   lazyfoundry <mode> <command>   Run CLI command
 
 MODES:
   web     Launch web-based graphical interface
-  tui     Launch terminal-based interface
   forge   Build, test, and deploy smart contracts
   anvil   Manage environment presets and run local node
 
@@ -188,13 +181,14 @@ FORGE COMMANDS:
 ANVIL COMMANDS:
 
   Preset Management:
-    lazyfoundry anvil add <n> <rpc-url> <chain-id> [fork-url] [pk]
+    lazyfoundry anvil add <name> <rpc-url> <chain-id> [fork-url] [pk]
     lazyfoundry anvil list
-    lazyfoundry anvil show <n>
-    lazyfoundry anvil delete <n>
+    lazyfoundry anvil show <name>
+    lazyfoundry anvil delete <name>
 
-  Start Local Node:
+  Start/Stop Local Node:
     lazyfoundry anvil start [preset-name]
+    lazyfoundry anvil stop
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -206,14 +200,17 @@ EXAMPLES:
   # Launch Web Interface on custom port
   lazyfoundry web 8080
 
-  # Launch Terminal UI
-  lazyfoundry tui
-
   # Create a local preset (CLI)
   lazyfoundry anvil add local http://127.0.0.1:8545 31337
 
   # Build your contracts (CLI)
   lazyfoundry forge build
+
+  # Start Anvil node (CLI)
+  lazyfoundry anvil start local
+
+  # Stop Anvil node (CLI)
+  lazyfoundry anvil stop
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
