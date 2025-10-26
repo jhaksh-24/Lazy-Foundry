@@ -6,24 +6,38 @@ import (
 
 	"github.com/jhaksh-24/Lazy-Foundry/internal/anvil"
 	"github.com/jhaksh-24/Lazy-Foundry/internal/forge"
-	"github.com/jhaksh-24/Lazy-Foundry/internal/tui"
+	"github.com/jhaksh-24/Lazy-Foundry/internal/server"
 )
 
 func main() {
-	// If no arguments, launch TUI
+	// If no arguments, launch web UI
 	if len(os.Args) < 2 {
-		if err := tui.Run(); err != nil {
-			fmt.Printf("Error: %s\n", err)
+		fmt.Println("🌐 Starting Lazy-Foundry Web Interface...")
+		s := server.New()
+		if err := s.Start("3000"); err != nil {
+			fmt.Printf("Error starting server: %s\n", err)
 			os.Exit(1)
 		}
 		return
 	}
 
-	// First argument is the mode (forge, anvil, or special flags)
+	// First argument is the mode
 	mode := os.Args[1]
 
 	// Route to the correct handler based on mode
 	switch mode {
+	case "web":
+		// Explicit web server launch
+		port := "3000"
+		if len(os.Args) > 2 {
+			port = os.Args[2]
+		}
+		fmt.Printf("🌐 Starting Lazy-Foundry Web Interface on port %s...\n", port)
+		s := server.New()
+		if err := s.Start(port); err != nil {
+			fmt.Printf("Error starting server: %s\n", err)
+			os.Exit(1)
+		}
 	case "tui":
 		// Explicit TUI launch
 		if err := tui.Run(); err != nil {
@@ -130,13 +144,27 @@ func printUsage() {
 ╚═══════════════════════════════════════════════════════════════╝
 
 USAGE:
-  lazyfoundry                    Launch interactive TUI
-  lazyfoundry tui                Launch interactive TUI (explicit)
+  lazyfoundry                    Launch Web Interface (default)
+  lazyfoundry web [port]         Launch Web Interface on specified port
+  lazyfoundry tui                Launch Terminal User Interface
   lazyfoundry <mode> <command>   Run CLI command
 
 MODES:
+  web     Launch web-based graphical interface
+  tui     Launch terminal-based interface
   forge   Build, test, and deploy smart contracts
   anvil   Manage environment presets and run local node
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WEB INTERFACE:
+
+  Start Web UI:
+    lazyfoundry                     (default port 3000)
+    lazyfoundry web                 (default port 3000)
+    lazyfoundry web 8080            (custom port)
+
+  Access at: http://localhost:3000
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -172,26 +200,20 @@ ANVIL COMMANDS:
 
 EXAMPLES:
 
-  # Launch TUI (recommended for beginners)
+  # Launch Web Interface (recommended)
   lazyfoundry
 
-  # Create a local preset
+  # Launch Web Interface on custom port
+  lazyfoundry web 8080
+
+  # Launch Terminal UI
+  lazyfoundry tui
+
+  # Create a local preset (CLI)
   lazyfoundry anvil add local http://127.0.0.1:8545 31337
 
-  # Start anvil with the local preset
-  lazyfoundry anvil start local
-
-  # Initialize a new Foundry project
-  lazyfoundry forge init
-
-  # Build your contracts
+  # Build your contracts (CLI)
   lazyfoundry forge build
-
-  # Run tests
-  lazyfoundry forge test
-
-  # Deploy a contract
-  lazyfoundry forge create MyContract --rpc-url http://localhost:8545
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

@@ -1,8 +1,10 @@
 package server
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os/exec"
 	"sync"
@@ -21,6 +23,8 @@ var upgrader = websocket.Upgrader{
 type Server struct {
 	anvilCmd *exec.Cmd
 	mu       sync.Mutex
+	wsClients map[*websocket.Conn]bool
+	wsMu      sync.Mutex
 }
 
 type Request struct {
@@ -35,8 +39,16 @@ type Response struct {
 	Output  string `json:"output,omitempty"`
 }
 
+type StreamMessage struct {
+	Type    string `json:"type"`    // "output", "error", "complete"
+	Content string `json:"content"`
+	Command string `json:"command"`
+}
+
 func New() *Server {
-	return &Server{}
+	return &Server{
+		wsClients: make(map[*websocket.Conn]bool),
+	}
 }
 
 func (s *Server) Start(port string) error {
@@ -50,7 +62,7 @@ func (s *Server) Start(port string) error {
 	// API endpoint
 	http.HandleFunc("/api/execute", s.handleExecute)
 	
-	// WebSocket endpoint for real-time output
+	// WebSocket endpoint for real-time streaming
 	http.HandleFunc("/ws", s.handleWebSocket)
 
 	fmt.Printf("🚀 Lazy-Foundry Web Server starting on http://localhost:%s\n", port)
@@ -123,42 +135,28 @@ func (s *Server) executeCommand(req Request) Response {
 func (s *Server) handleForge(command string, args []string) (string, error) {
 	switch command {
 	case "build":
-		return s.captureOutput(func() error {
-			return forge.Build(args...)
-		})
+		return s.runCommandWithOutput("forge", append([]string{"build"}, args...)...)
 	case "test":
-		return s.captureOutput(func() error {
-			return forge.Test(args...)
-		})
+		return s.runCommandWithOutput("forge", append([]string{"test"}, args...)...)
 	case "coverage":
-		return s.captureOutput(func() error {
-			return forge.Coverage(args...)
-		})
+		return s.runCommandWithOutput("forge", append([]string{"coverage"}, args...)...)
 	case "init":
-		return s.captureOutput(func() error {
-			return forge.Init(args...)
-		})
+		return s.runCommandWithOutput("forge", append([]string{"init"}, args...)...)
 	case "install":
 		if len(args) < 1 {
 			return "", fmt.Errorf("install requires package name")
 		}
-		return s.captureOutput(func() error {
-			return forge.Install(args[0], args[1:]...)
-		})
+		return s.runCommandWithOutput("forge", append([]string{"install"}, args...)...)
 	case "script":
 		if len(args) < 1 {
 			return "", fmt.Errorf("script requires script path")
 		}
-		return s.captureOutput(func() error {
-			return forge.Script(args[0], args[1:]...)
-		})
+		return s.runCommandWithOutput("forge", append([]string{"script"}, args...)...)
 	case "create":
 		if len(args) < 1 {
 			return "", fmt.Errorf("create requires contract name")
 		}
-		return s.captureOutput(func() error {
-			return forge.Create(args[0], args[1:]...)
-		})
+		return s.runCommandWithOutput("forge", append([]string{"create"}, args...)...)
 	default:
 		return "", fmt.Errorf("unknown forge command: %s", command)
 	}
@@ -167,21 +165,101 @@ func (s *Server) handleForge(command string, args []string) (string, error) {
 func (s *Server) handleAnvil(command string, args []string) (string, error) {
 	switch command {
 	case "add":
-		return s.captureOutput(func() error {
-			return anvil.AddPresetCLI(args)
-		})
+		if len(args) < 3 {
+			return "", fmt.Errorf("usage: anvil add <name> <rpc-url> <chain-id> [fork-url] [private-key]")
+		}
+		
+		name := args[0]
+		anvil.Initializer()
+		anvil.ImplementRpcURL(args[1])
+		anvil.ImplementChainID(args[2])
+
+		if len(args) > 3 && args[3] != "" {
+			anvil.ImplementForkURL(args[3])
+		}
+
+		if len(args) > 4 && args[4] != "" {
+			if err := anvil.ImplementPrivateKey(args[4]); err != nil {
+				return "", fmt.Errorf("invalid private key: %w", err)
+			}
+		}
+
+		if err := anvil.SavePreset(name); err != nil {
+			return "", fmt.Errorf("failed to save preset: %w", err)
+		}
+
+		return fmt.Sprintf("Preset '%s' created successfully!", name), nil
+
 	case "list":
-		return s.captureOutput(func() error {
-			return anvil.ListPresetsCLI()
-		})
+		names := anvil.ListPresets()
+		if len(names) == 0 {
+			return "No presets found.\nCreate one with: anvil add <name> <rpc-url> <chain-id>", nil
+		}
+
+		output := "\n=== Available Presets ===\n\n"
+		for _, name := range names {
+			preset, err := anvil.GetPreset(name)
+			if err != nil {
+				continue
+			}
+			output += fmt.Sprintf("📦 %s\n", name)
+			output += fmt.Sprintf("   RPC: %s\n", preset.RpcURL)
+			output += fmt.Sprintf("   Chain ID: %d\n", preset.ChainID)
+			if preset.ForkURL != "" {
+				output += fmt.Sprintf("   Fork: %s\n", preset.ForkURL)
+			}
+			output += "\n"
+		}
+		return output, nil
+
 	case "show":
-		return s.captureOutput(func() error {
-			return anvil.ShowPresetCLI(args)
-		})
+		if len(args) < 1 {
+			return "", fmt.Errorf("usage: anvil show <preset-name>")
+		}
+
+		name := args[0]
+		preset, err := anvil.GetPreset(name)
+		if err != nil {
+			return "", err
+		}
+
+		output := fmt.Sprintf("\n📦 Preset: %s\n", name)
+		output += "─────────────────────────────────────────\n"
+		output += fmt.Sprintf("  RPC URL:      %s\n", preset.RpcURL)
+		output += fmt.Sprintf("  Chain ID:     %d\n", preset.ChainID)
+		output += fmt.Sprintf("  Gas Limit:    %d\n", preset.GasLimit)
+		output += fmt.Sprintf("  Gas Fee:      %d\n", preset.GasFee)
+		output += fmt.Sprintf("  Output Dir:   %s\n", preset.OutputDir)
+
+		if preset.ForkURL != "" {
+			output += fmt.Sprintf("  Fork URL:     %s\n", preset.ForkURL)
+		}
+
+		if preset.PrivateKey != "" {
+			output += fmt.Sprintf("  Private Key:  %s... (hidden)\n", preset.PrivateKey[:10])
+		}
+		output += "─────────────────────────────────────────\n"
+
+		return output, nil
+
 	case "delete":
-		return s.captureOutput(func() error {
-			return anvil.DeletePresetCLI(args)
-		})
+		if len(args) < 1 {
+			return "", fmt.Errorf("usage: anvil delete <preset-name>")
+		}
+
+		name := args[0]
+		_, err := anvil.GetPreset(name)
+		if err != nil {
+			return "", err
+		}
+
+		err = anvil.DeletePreset(name)
+		if err != nil {
+			return "", fmt.Errorf("failed to delete preset: %w", err)
+		}
+
+		return fmt.Sprintf("Preset '%s' deleted successfully!", name), nil
+
 	case "start":
 		return s.startAnvilNode(args)
 	case "stop":
@@ -191,14 +269,16 @@ func (s *Server) handleAnvil(command string, args []string) (string, error) {
 	}
 }
 
-func (s *Server) captureOutput(fn func() error) (string, error) {
-	// Execute the function and capture any printed output
-	// For now, we'll just return error messages
-	err := fn()
+func (s *Server) runCommandWithOutput(name string, args ...string) (string, error) {
+	cmd := exec.Command(name, args...)
+	
+	output, err := cmd.CombinedOutput()
+	
 	if err != nil {
-		return "", err
+		return string(output), fmt.Errorf("command failed: %w", err)
 	}
-	return "Command executed successfully", nil
+	
+	return string(output), nil
 }
 
 func (s *Server) startAnvilNode(args []string) (string, error) {
@@ -232,13 +312,25 @@ func (s *Server) startAnvilNode(args []string) (string, error) {
 
 	s.anvilCmd = exec.Command("anvil", anvilArgs...)
 	
+	// Capture output for streaming to websocket clients
+	stdout, _ := s.anvilCmd.StdoutPipe()
+	stderr, _ := s.anvilCmd.StderrPipe()
+	
 	if err := s.anvilCmd.Start(); err != nil {
 		s.anvilCmd = nil
 		return "", fmt.Errorf("failed to start anvil: %w", err)
 	}
 
-	output := fmt.Sprintf("Anvil started with preset '%s'\nChain ID: %d\nRPC URL: %s",
-		presetName, config.ChainID, config.RpcURL)
+	// Stream output to websocket clients
+	go s.streamOutput(stdout, "anvil")
+	go s.streamOutput(stderr, "anvil")
+
+	output := fmt.Sprintf("Anvil started with preset '%s'\n", presetName)
+	output += fmt.Sprintf("Chain ID: %d\n", config.ChainID)
+	output += fmt.Sprintf("RPC URL: %s\n", config.RpcURL)
+	if config.ForkURL != "" {
+		output += fmt.Sprintf("Forking from: %s\n", config.ForkURL)
+	}
 	
 	return output, nil
 }
@@ -265,8 +357,19 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("WebSocket upgrade error:", err)
 		return
 	}
-	defer conn.Close()
 
+	s.wsMu.Lock()
+	s.wsClients[conn] = true
+	s.wsMu.Unlock()
+
+	defer func() {
+		s.wsMu.Lock()
+		delete(s.wsClients, conn)
+		s.wsMu.Unlock()
+		conn.Close()
+	}()
+
+	// Keep connection alive and handle incoming messages
 	for {
 		var req Request
 		err := conn.ReadJSON(&req)
@@ -274,9 +377,94 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		response := s.executeCommand(req)
-		if err := conn.WriteJSON(response); err != nil {
-			break
+		// For streaming commands, handle them specially
+		if req.Mode == "forge" && (req.Command == "test" || req.Command == "coverage" || req.Command == "build") {
+			s.executeStreamingCommand(conn, req)
+		} else {
+			response := s.executeCommand(req)
+			conn.WriteJSON(response)
 		}
+	}
+}
+
+func (s *Server) executeStreamingCommand(conn *websocket.Conn, req Request) {
+	var cmd *exec.Cmd
+	
+	switch req.Command {
+	case "build":
+		cmd = exec.Command("forge", append([]string{"build"}, req.Args...)...)
+	case "test":
+		cmd = exec.Command("forge", append([]string{"test"}, req.Args...)...)
+	case "coverage":
+		cmd = exec.Command("forge", append([]string{"coverage"}, req.Args...)...)
+	default:
+		conn.WriteJSON(Response{Success: false, Message: "Command not supported for streaming"})
+		return
+	}
+
+	stdout, _ := cmd.StdoutPipe()
+	stderr, _ := cmd.StderrPipe()
+
+	if err := cmd.Start(); err != nil {
+		conn.WriteJSON(Response{Success: false, Message: err.Error()})
+		return
+	}
+
+	// Stream stdout
+	go func() {
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			conn.WriteJSON(StreamMessage{
+				Type:    "output",
+				Content: scanner.Text(),
+				Command: req.Command,
+			})
+		}
+	}()
+
+	// Stream stderr
+	go func() {
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			conn.WriteJSON(StreamMessage{
+				Type:    "error",
+				Content: scanner.Text(),
+				Command: req.Command,
+			})
+		}
+	}()
+
+	// Wait for command to finish
+	err := cmd.Wait()
+	
+	if err != nil {
+		conn.WriteJSON(StreamMessage{
+			Type:    "complete",
+			Content: "Command failed: " + err.Error(),
+			Command: req.Command,
+		})
+	} else {
+		conn.WriteJSON(StreamMessage{
+			Type:    "complete",
+			Content: "Command completed successfully",
+			Command: req.Command,
+		})
+	}
+}
+
+func (s *Server) streamOutput(reader io.Reader, source string) {
+	scanner := bufio.NewScanner(reader)
+	for scanner.Scan() {
+		line := scanner.Text()
+		
+		s.wsMu.Lock()
+		for client := range s.wsClients {
+			client.WriteJSON(StreamMessage{
+				Type:    "output",
+				Content: line,
+				Command: source,
+			})
+		}
+		s.wsMu.Unlock()
 	}
 }
